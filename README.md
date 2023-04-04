@@ -8,4 +8,4 @@ Here you can also share places with your friends and likes the ones you love the
 This student project is made with Create React App.
 The code is connected to the API with the other students profile information and cards array. Registration and authorization are also relised with API requests.
 
-To watch the project click [here](https://polina-khv.github.io/mesto-react-auth/).
+To watch the project click [here](https://polina-khv.github.io/react-mesto-auth/).
