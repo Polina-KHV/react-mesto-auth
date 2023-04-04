@@ -47,10 +47,8 @@ function App() {
       .catch((err) => {
         console.log(err);
       })
-      .finally(() => {
-        setLoading(false)
-      })
     }
+    setLoading(false)
   };
 
   useEffect(() => {
@@ -300,11 +298,13 @@ function App() {
     )
   };
 
-  if (loading) {return "Loading..."}
+  if (loading) {
+    return "Loading...";
+  };
+
   return (
     <div className="page">
       <div className="page__container">
-
         <Routes>
           <Route path="/sign-up" element={<Register
             popupData={infoTooltipPopupData}
@@ -314,9 +314,7 @@ function App() {
           <Route path="/sign-in" element={<Login
             onLogin={handleAuthorization}
           />}/>
-          <Route element={<ProtectedRoute loggedIn={loggedIn} />}>
-            <Route path="/" element={<MainPage/>}/>
-          </Route>
+          <Route path="/" element={<ProtectedRoute element={MainPage} loggedIn={loggedIn} />}/>
         </Routes>
       </div>
     </div>
