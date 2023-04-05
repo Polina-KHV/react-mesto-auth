@@ -3,7 +3,7 @@ import {Routes, Route, useNavigate} from 'react-router-dom';
 import { UserContext } from '../contexts/CurrentUserContext';
 import { api } from '../utils/api';
 import ProtectedRoute from './ProtectedRoute';
-import { getContent, authorize, register } from '../auth';
+import { getContent, authorize, register } from '../utils/auth';
 import Header from './Header';
 import Main from './Main';
 import Footer from './Footer';
@@ -30,31 +30,70 @@ function App() {
   const [isCardPopupOpen, setIsCardPopupOpen] = useState(false);
   const [isInfoTooltipPopupOpen, setIsInfoTooltipPopupOpen] = useState(false);
   const [infoTooltipPopupData, setInfoTooltipPopupData] = useState({});
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   // Проверяем токен при загрузке сайта
   function tokenCheck() {
+    setLoading(true);
     const jwt = localStorage.getItem('jwt');
     if (jwt){
       getContent(jwt).then((res) => {
         if (res){
           setLoggedIn(true);
           setUserEmail(res.data.email);
-          navigate("/", {replace: true})
         }
       })
+      .then(() => navigate("/", {replace: true}))
       .catch((err) => {
-        console.log(err);
+        console.log(`Ошибка: ${err.status}`);
       })
-    }
-    setLoading(false)
+      .finally(() => setLoading(false))
+    } else {setLoading(false)}
   };
 
   useEffect(() => {
     tokenCheck();
     // eslint-disable-next-line
-  }, [loggedIn]);
+  }, []);
+
+  // Передаем данные успешной регистрации в попап InfoTooltip
+  function setDoneRegistrationData(text) {
+    setInfoTooltipPopupData({
+      name: "done-registration",
+      imageType: "done",
+      text,
+      handlePopupClose: function() {
+        setIsInfoTooltipPopupOpen(false);
+        navigate("/sign-in", {replace: true})
+      }
+    })
+  };
+
+  // Передаем данные ошибки регистрации в попап InfoTooltip
+  function setFormMistakeData(text) {
+    setInfoTooltipPopupData({
+      name: "registration-mistake",
+      imageType: "mistake",
+      text,
+      handlePopupClose: function() {
+        setIsInfoTooltipPopupOpen(false);
+      }
+    });
+  };
+
+  // Обрабатываем регистрацию
+  function handleRegistration(email, password) {
+    register(email, password)
+    .then(() => {
+      setDoneRegistrationData("Вы успешно зарегистрировались!");
+    })
+    .catch((err) => {
+      console.log(`Ошибка: ${err.status}`);
+      setFormMistakeData(`Ошибка регистрации ${err.status}`);
+    })
+    .finally(() => setIsInfoTooltipPopupOpen(true))
+  };
 
   // Обрабатываем вход в профиль
   function handleAuthorization(email, password) {
@@ -66,12 +105,15 @@ function App() {
       if (data.token){
         localStorage.setItem('jwt', data.token);
         setLoggedIn(true);
+        setUserEmail(email);
         navigate("/", {replace: true})
       }
     })
     .catch((err) => {
-      console.log(err);
-    });
+      console.log(`Ошибка: ${err.status}`);
+      setFormMistakeData(`Ошибка входа ${err.status}`);
+    })
+    .finally(() => setIsInfoTooltipPopupOpen(true))
   };
 
   // Обрабатываем выход из профиля
@@ -79,77 +121,40 @@ function App() {
     localStorage.removeItem('jwt');
     navigate("/sign-in", {replace: true})
   };
-
-  // Передаем данные успешной регистрации в попап InfoTooltip
-  function setDoneRegistrationData() {
-    setInfoTooltipPopupData({
-      name: "done-registration",
-      imageType: "done",
-      text: "Вы успешно зарегистрировались!",
-      handlePopupClose: function() {
-        setIsInfoTooltipPopupOpen(false);
-        navigate("/sign-in", {replace: true})
-      }
-    })
-  };
-
-  // Передаем данные ошибки регистрации в попап InfoTooltip
-  function setRegistrationMistakeData() {
-    setInfoTooltipPopupData({
-      name: "registration-mistake",
-      imageType: "mistake",
-      text: "Что-то пошло не так! Попробуйте ещё раз.",
-      handlePopupClose: function() {
-        setIsInfoTooltipPopupOpen(false);
-      }
-    });
-  };
-
-  // Обрабатываем регистрацию
-  function handleRegistration(email, password) {
-    register(email, password)
-    .then((res) => {
-      if(!res.error) {
-        setDoneRegistrationData();
-      } else {
-        setRegistrationMistakeData();
-      }
-      setIsInfoTooltipPopupOpen(true);
-    })
-    .catch((err) => {
-      console.log(err);
-    });
-  };
-
+  
   // Загружаем данные пользователя
   useEffect(() => {
-    api.getUserInfo()
-    .then((data) => {
-      setCurrentUser(data);
-    })
-    .catch((err) => {
-      console.log(err);
-    });
-  }, []);
+    if (loggedIn){
+      api.getUserInfo()
+      .then((data) => {
+        setCurrentUser(data);
+      })
+      .catch((err) => {
+        console.log(err);
+      });
+    }
+  }, [loggedIn]);
 
   // Загружаем массив карточек
   useEffect(() => {
-    api.getInitialCards()
-    .then((data) => {
-      setCards(
-        data.map((item) => ({
-          _id: item._id,
-          link: item.link,
-          name: item.name,
-          likes: item.likes,
-          owner: item.owner
-        }))
-      )
-    })
-    .catch((err) => {
-      console.log(err);
-    });
-  }, []);
+    if (loggedIn){
+      api.getInitialCards()
+      .then((data) => {
+        setCards(
+          data.map((item) => ({
+            _id: item._id,
+            link: item.link,
+            name: item.name,
+            likes: item.likes,
+            owner: item.owner
+          }))
+        )
+      })
+      .catch((err) => {
+        console.log(err);
+      });
+    }
+  }, [loggedIn]);
 
   // Обрабатываем лайк карточек
   function handleCardLike(card) {
@@ -312,6 +317,8 @@ function App() {
             onSignin={handleRegistration}
           />}/>
           <Route path="/sign-in" element={<Login
+            popupData={infoTooltipPopupData}
+            isPopupOpen={isInfoTooltipPopupOpen}
             onLogin={handleAuthorization}
           />}/>
           <Route path="/" element={<ProtectedRoute element={MainPage} loggedIn={loggedIn} />}/>

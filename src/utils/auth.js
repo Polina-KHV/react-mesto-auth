@@ -20,8 +20,10 @@ function makeRequest(url, method, body, token) {
   };
 
   return fetch(`${BASE_URL + url}`, config)
-  .then((res => res.json()))
-  .catch((err) => console.log(err))
+  .then(((res) => {
+    if(res.ok) {return res.json()}
+    return Promise.reject(res)
+  }))
 };
 
 export function register(email, password) {
